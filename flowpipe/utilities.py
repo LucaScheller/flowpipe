@@ -8,7 +8,7 @@ import sys
 from hashlib import sha256
 
 
-def import_class(module, cls_name, file_location=None):
+def import_class(module_name, cls_name, file_location=None):
     """Import and return the given class from the given module.
 
     File location can be given to import the class from a location that
@@ -16,18 +16,17 @@ def import_class(module, cls_name, file_location=None):
     This works from python 2.6 to python 3.
     """
     try:
-        module = importlib.import_module(module)
-    except NameError:  # pragma: no cover
-        module = __import__(module, globals(), locals(), ["object"], -1)
+        module = importlib.import_module(module_name)
+    except (ImportError, ModuleNotFoundError):
+        spec = importlib.util.spec_from_file_location(module_name, file_location)
+        module = importlib.util.module_from_spec(spec)
+        # sys.modules[module_name] = module
+        spec.loader.exec_module(module)
     try:
         cls = getattr(module, cls_name)
-    except AttributeError:  # pragma: no cover
-        loader = importlib.machinery.SourceFileLoader("module", file_location)
-        spec = importlib.machinery.ModuleSpec(
-            "module", loader, origin=file_location
-        )
-        module = importlib.util.module_from_spec(spec)
-        cls = getattr(module, cls_name)
+    except AttributeError:
+        msg = f"Failed to find class {cls_name} in {module_name} in file {file_location}" if file_location else f"Failed to find class {cls_name} in {module_name}"
+        raise Exception(msg)
     return cls
 
 
